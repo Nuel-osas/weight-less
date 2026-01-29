@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { Header } from '@/components/Header';
 import { NFTCard } from '@/components/NFTCard';
 import { uploadImage, uploadMetadata, createMetadata, getStorageUrl } from '@/lib/services/storageService';
+import { uploadWithCommitment, ZGUploadProgress } from '@/lib/services/zgStorageService';
 import { mintNFT, batchMintNFTs, getExplorerUrl } from '@/lib/services/contractService';
 
 // Types
@@ -74,6 +75,8 @@ export default function GeneratePage() {
 
   // Individual minting state
   const [mintingNftId, setMintingNftId] = useState<string | null>(null);
+  const [mintStep, setMintStep] = useState<'idle' | 'storage' | 'minting'>('idle');
+  const [mintProgress, setMintProgress] = useState<string>('');
 
   // Start camera
   const startCamera = useCallback(async () => {
@@ -453,7 +456,7 @@ export default function GeneratePage() {
     }
   };
 
-  // Mint a single NFT
+  // Mint a single NFT with 2-signature flow
   const handleMintSingle = async (nftId: string) => {
     if (!address || !signer) {
       alert('Please connect your wallet first!');
@@ -468,51 +471,71 @@ export default function GeneratePage() {
 
     try {
       setMintingNftId(nftId);
+      setMintStep('storage');
+      setMintProgress('Preparing storage upload...');
 
       console.log(`[App] Minting single NFT: ${nft.title || nftId}...`);
+      console.log('[App] === SIGNATURE 1: Storage Upload ===');
 
       // Update status to uploading
       setGeneratedImages(prev => prev.map(img =>
         img.id === nftId ? { ...img, status: 'uploading' as const } : img
       ));
 
-      // Step 1: Upload image to 0G Storage
+      // Progress callback for storage upload
+      const onStorageProgress = (progress: ZGUploadProgress) => {
+        setMintProgress(progress.message);
+        console.log(`[0G Storage] ${progress.step}: ${progress.message}`);
+      };
+
+      // Step 1: Upload image to 0G Storage (FIRST SIGNATURE)
       console.log('[App] Uploading image to 0G Storage...');
-      const imageResult = await uploadImage(nft.url);
-      if (!imageResult.success || !imageResult.hash) {
+      setMintProgress('Sign to upload image to 0G Storage...');
+
+      const imageResult = await uploadWithCommitment(signer, nft.url, 'image', onStorageProgress);
+      if (!imageResult.success || !imageResult.root) {
         throw new Error(imageResult.error || 'Failed to upload image');
       }
-      console.log(`[App] ✓ Image uploaded: ${imageResult.hash}`);
+      console.log(`[App] ✓ Image uploaded: ${imageResult.root}`);
+      console.log(`[App] ✓ Storage TX: ${imageResult.txHash}`);
 
-      // Step 2: Upload metadata to 0G Storage
+      // Step 2: Upload metadata to 0G Storage (uses same signature session)
       console.log('[App] Uploading metadata to 0G Storage...');
+      setMintProgress('Sign to upload metadata...');
+
       const metadata = createMetadata(
         nft.title || 'AI NFT',
         nft.description || 'AI-generated NFT on 0G Chain',
-        imageResult.hash,
+        imageResult.root,
         nft.style,
         nft.prompt,
         resolution
       );
-      const metadataResult = await uploadMetadata(metadata);
-      if (!metadataResult.success || !metadataResult.hash) {
+      const metadataJson = JSON.stringify(metadata, null, 2);
+      const metadataResult = await uploadWithCommitment(signer, metadataJson, 'json', onStorageProgress);
+
+      if (!metadataResult.success || !metadataResult.root) {
         throw new Error(metadataResult.error || 'Failed to upload metadata');
       }
-      console.log(`[App] ✓ Metadata uploaded: ${metadataResult.hash}`);
+      console.log(`[App] ✓ Metadata uploaded: ${metadataResult.root}`);
+      console.log(`[App] ✓ Storage TX: ${metadataResult.txHash}`);
 
       // Update status to minting
       setGeneratedImages(prev => prev.map(img =>
         img.id === nftId ? {
           ...img,
-          imageHash: imageResult.hash,
-          metadataHash: metadataResult.hash,
+          imageHash: imageResult.root,
+          metadataHash: metadataResult.root,
           status: 'minting' as const
         } : img
       ));
 
-      // Step 3: Mint NFT on 0G Chain
-      console.log('[App] Minting on blockchain...');
-      const mintResult = await mintNFT(signer, metadataResult.hash, imageResult.hash, nft.style, nft.prompt);
+      // Step 3: Mint NFT on 0G Chain (SECOND SIGNATURE)
+      console.log('[App] === SIGNATURE 2: NFT Minting ===');
+      setMintStep('minting');
+      setMintProgress('Sign to mint NFT on blockchain...');
+
+      const mintResult = await mintNFT(signer, metadataResult.root, imageResult.root, nft.style, nft.prompt);
 
       console.log(`[App] ✓ NFT minted! Token ID: ${mintResult.tokenId}, TX: ${mintResult.txHash}`);
 
@@ -526,9 +549,20 @@ export default function GeneratePage() {
         } : img
       ));
 
+      setMintProgress('NFT minted successfully!');
+
     } catch (error) {
       console.error('[App] Single mint failed:', error);
-      alert(`Minting failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // Check if user rejected
+      if (errorMessage.includes('user rejected') || errorMessage.includes('ACTION_REJECTED')) {
+        setMintProgress('Transaction cancelled');
+      } else {
+        alert(`Minting failed: ${errorMessage}`);
+        setMintProgress('');
+      }
 
       // Revert status to completed so user can retry
       setGeneratedImages(prev => prev.map(img =>
@@ -536,6 +570,9 @@ export default function GeneratePage() {
       ));
     } finally {
       setMintingNftId(null);
+      setMintStep('idle');
+      // Clear progress after delay
+      setTimeout(() => setMintProgress(''), 3000);
     }
   };
 
@@ -1035,6 +1072,7 @@ export default function GeneratePage() {
                             onViewMetadata={() => console.log('View metadata', nft.id)}
                             onMint={() => handleMintSingle(nft.id)}
                             isMinting={mintingNftId === nft.id}
+                            mintProgress={mintingNftId === nft.id ? mintProgress : undefined}
                           />
                         </motion.div>
                       ))}

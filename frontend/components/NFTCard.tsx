@@ -22,9 +22,10 @@ interface NFTCardProps {
   onViewMetadata?: () => void;
   onMint?: () => void;
   isMinting?: boolean;
+  mintProgress?: string;
 }
 
-export function NFTCard({ nft, onRegenerate, onViewMetadata, onMint, isMinting }: NFTCardProps) {
+export function NFTCard({ nft, onRegenerate, onViewMetadata, onMint, isMinting, mintProgress }: NFTCardProps) {
   const getExplorerUrl = (txHash: string) => {
     return `https://chainscan-galileo.0g.ai/tx/${txHash}`;
   };
@@ -163,9 +164,14 @@ export function NFTCard({ nft, onRegenerate, onViewMetadata, onMint, isMinting }
 
         {/* Uploading/Minting Status */}
         {(nft.status === 'uploading' || nft.status === 'minting') && (
-          <div className="w-full py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium text-sm flex items-center justify-center gap-2">
-            <Loader2 size={14} className="animate-spin" />
-            {nft.status === 'uploading' ? 'Uploading...' : 'Minting...'}
+          <div className="w-full py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium text-xs flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" />
+              <span>{nft.status === 'uploading' ? 'Step 1: Storage' : 'Step 2: Minting'}</span>
+            </div>
+            {mintProgress && (
+              <span className="text-[10px] text-gray-500 text-center">{mintProgress}</span>
+            )}
           </div>
         )}
 
