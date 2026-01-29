@@ -171,7 +171,7 @@ contract SketchNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @return Full URL to access the image
      */
     function getImageUrl(string memory storageHash) public view returns (string memory) {
-        return string(abi.encodePacked(storageGateway, "/", storageHash));
+        return string(abi.encodePacked(storageGateway, "?root=", storageHash));
     }
 
     /**
@@ -243,9 +243,9 @@ contract SketchNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
 
-        // Return full URL to metadata
+        // Return full URL to metadata using 0G indexer query format
         string memory metadataHash = nftData[tokenId].metadataHash;
-        return string(abi.encodePacked(storageGateway, "/", metadataHash));
+        return string(abi.encodePacked(storageGateway, "?root=", metadataHash));
     }
 
     function supportsInterface(bytes4 interfaceId)

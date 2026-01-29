@@ -535,7 +535,8 @@ export default function GeneratePage() {
       setMintStep('minting');
       setMintProgress('Sign to mint NFT on blockchain...');
 
-      const mintResult = await mintNFT(signer, metadataResult.root, imageResult.root, nft.style, nft.prompt);
+      // mintNFT expects: (signer, imageHash, metadataHash, style, prompt)
+      const mintResult = await mintNFT(signer, imageResult.root, metadataResult.root, nft.style, nft.prompt);
 
       console.log(`[App] ✓ NFT minted! Token ID: ${mintResult.tokenId}, TX: ${mintResult.txHash}`);
 

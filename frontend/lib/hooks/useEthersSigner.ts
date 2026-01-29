@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useWalletClient } from 'wagmi';
 import { BrowserProvider, JsonRpcSigner } from 'ethers';
 import type { WalletClient } from 'viem';
@@ -8,7 +8,7 @@ import type { WalletClient } from 'viem';
 /**
  * Convert a viem WalletClient to an ethers.js Signer
  */
-function walletClientToSigner(walletClient: WalletClient): JsonRpcSigner {
+async function walletClientToSigner(walletClient: WalletClient): Promise<JsonRpcSigner> {
   const { account, chain, transport } = walletClient;
 
   const network = {
@@ -18,7 +18,8 @@ function walletClientToSigner(walletClient: WalletClient): JsonRpcSigner {
   };
 
   const provider = new BrowserProvider(transport, network);
-  const signer = new JsonRpcSigner(provider, account?.address ?? '');
+  // Use getSigner() instead of direct instantiation for proper initialization
+  const signer = await provider.getSigner(account?.address);
 
   return signer;
 }
@@ -28,9 +29,21 @@ function walletClientToSigner(walletClient: WalletClient): JsonRpcSigner {
  */
 export function useEthersSigner() {
   const { data: walletClient } = useWalletClient();
+  const [signer, setSigner] = useState<JsonRpcSigner | undefined>(undefined);
 
-  return useMemo(() => {
-    if (!walletClient) return undefined;
-    return walletClientToSigner(walletClient);
+  useEffect(() => {
+    if (!walletClient) {
+      setSigner(undefined);
+      return;
+    }
+
+    walletClientToSigner(walletClient)
+      .then(setSigner)
+      .catch((err) => {
+        console.error('[useEthersSigner] Failed to create signer:', err);
+        setSigner(undefined);
+      });
   }, [walletClient]);
+
+  return signer;
 }

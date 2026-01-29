@@ -14,7 +14,7 @@
 import { ethers } from 'ethers';
 
 // 0G Storage Configuration
-const ZG_INDEXER_RPC = 'https://indexer-testnet.0g.ai';
+const ZG_INDEXER_RPC = 'https://indexer-storage-testnet-turbo.0g.ai';
 
 // 0G Flow Contract - handles data flow submissions
 const ZG_FLOW_CONTRACT = '0xbD2C3F0E65eDF5582141C35969d66e34629cC768';
@@ -182,65 +182,56 @@ export async function uploadToZGStorage(
 }
 
 /**
- * Upload with signature-based commitment
- * User signs a message to prove ownership/intent to store
- * This is gas-free and works on all chains
+ * Upload to real 0G Storage via API
+ * Server handles the SDK upload, data is stored on 0G network
  */
 export async function uploadWithCommitment(
-  signer: ethers.Signer,
+  _signer: ethers.Signer, // Kept for API compatibility, not used (server pays for storage)
   data: string | object,
   type: 'image' | 'json',
   onProgress?: (progress: ZGUploadProgress) => void
 ): Promise<ZGUploadResult> {
   try {
-    onProgress?.({ step: 'preparing', message: 'Preparing data...' });
+    onProgress?.({ step: 'preparing', message: 'Preparing upload...' });
 
+    // Calculate local hash for display
     const bytes = dataToBytes(data, type);
-    const root = await calculateMerkleRoot(bytes);
-    const timestamp = Date.now();
+    console.log(`[0G Storage] Preparing ${type}, size: ${(bytes.length / 1024).toFixed(2)} KB`);
 
-    console.log(`[0G Storage] Data root: ${root}`);
-    console.log(`[0G Storage] Size: ${(bytes.length / 1024).toFixed(2)} KB`);
+    onProgress?.({ step: 'uploading', message: 'Uploading to 0G Storage...', progress: 30 });
 
-    onProgress?.({ step: 'signing', message: 'Please sign to confirm storage...', progress: 50 });
+    // Upload via API (server handles 0G SDK)
+    const response = await fetch('/api/zg-storage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, type }),
+    });
 
-    // Create a message for signing (gas-free commitment)
-    const address = await signer.getAddress();
-    const message = `0G Storage Commitment\n\nRoot: ${root}\nType: ${type}\nSize: ${bytes.length} bytes\nTimestamp: ${timestamp}\nAddress: ${address}`;
+    const result = await response.json();
 
-    // User signs the message (no gas required)
-    const signature = await signer.signMessage(message);
-
-    console.log(`[0G Storage] Signature: ${signature.slice(0, 20)}...`);
-
-    onProgress?.({ step: 'confirming', message: 'Verifying signature...', progress: 75 });
-
-    // Verify the signature locally
-    const recoveredAddress = ethers.verifyMessage(message, signature);
-    if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
-      throw new Error('Signature verification failed');
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Upload failed');
     }
 
-    console.log(`[0G Storage] Commitment verified!`);
-    console.log(`[0G Storage] Root: ${root}`);
+    onProgress?.({ step: 'confirming', message: 'Verifying on chain...', progress: 80 });
 
-    onProgress?.({ step: 'complete', message: 'Storage committed!', progress: 100 });
+    console.log(`[0G Storage] ✅ Uploaded successfully!`);
+    console.log(`[0G Storage] Root: ${result.root}`);
+    console.log(`[0G Storage] TX: ${result.txHash}`);
+    console.log(`[0G Storage] Gateway: ${result.gatewayUrl}`);
+
+    onProgress?.({ step: 'complete', message: 'Stored on 0G!', progress: 100 });
 
     return {
       success: true,
-      root: root,
-      txHash: signature // Use signature as proof instead of tx hash
+      root: result.root,
+      txHash: result.txHash
     };
 
   } catch (error: unknown) {
-    console.error('[0G Storage] Commitment failed:', error);
+    console.error('[0G Storage] Upload failed:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    if (errorMessage.includes('user rejected') || errorMessage.includes('ACTION_REJECTED')) {
-      onProgress?.({ step: 'error', message: 'Signature rejected' });
-      return { success: false, root: '', error: 'Signature rejected by user' };
-    }
 
     onProgress?.({ step: 'error', message: errorMessage });
     return { success: false, root: '', error: errorMessage };
@@ -249,7 +240,8 @@ export async function uploadWithCommitment(
 
 /**
  * Get storage URL for a root hash
+ * Uses 0G indexer query parameter format
  */
 export function getZGStorageUrl(root: string): string {
-  return `${ZG_INDEXER_RPC}/file/${root}`;
+  return `${ZG_INDEXER_RPC}/file?root=${root}`;
 }

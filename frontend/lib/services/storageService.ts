@@ -8,8 +8,8 @@
  * 3. User only signs once for NFT minting
  */
 
-// 0G Storage configuration
-const STORAGE_GATEWAY = process.env.NEXT_PUBLIC_0G_GATEWAY || 'https://indexer-testnet.0g.ai';
+// 0G Storage configuration - use turbo indexer with correct endpoint
+const STORAGE_GATEWAY = process.env.NEXT_PUBLIC_0G_GATEWAY || 'https://indexer-storage-testnet-turbo.0g.ai';
 
 export interface StorageResult {
   hash: string;
@@ -32,9 +32,10 @@ export interface NFTMetadata {
 
 /**
  * Get gateway URL for a storage hash
+ * Uses 0G indexer query parameter format: /file?root={hash}
  */
 export function getStorageUrl(hash: string): string {
-  return `${STORAGE_GATEWAY}/${hash}`;
+  return `${STORAGE_GATEWAY}/file?root=${hash}`;
 }
 
 /**
