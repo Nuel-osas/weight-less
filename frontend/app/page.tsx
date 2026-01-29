@@ -34,10 +34,8 @@ export default function LandingPage() {
           <div className="flex items-center gap-8">
             {/* Navigation */}
             <nav className="hidden md:flex items-center gap-8 text-white/90 font-medium text-sm tracking-wider uppercase">
-              <Link href="/trending" className="hover:text-white transition-colors">Trending</Link>
-              <Link href="/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
+              <Link href="/collection" className="hover:text-white transition-colors">Collection</Link>
               <Link href="/generate" className="hover:text-white transition-colors">Create</Link>
-              <Link href="/community" className="hover:text-white transition-colors">Community</Link>
             </nav>
 
             <div className="flex items-center gap-4">

@@ -26,10 +26,8 @@ export function Header() {
           {/* Navigation - Hidden on generate page */}
           {!isGeneratePage && (
             <nav className="hidden md:flex items-center gap-8 text-gray-700 font-medium text-sm tracking-wider uppercase">
-              <Link href="/trending" className="hover:text-gray-900 transition-colors">Trending</Link>
-              <Link href="/marketplace" className="hover:text-gray-900 transition-colors">Marketplace</Link>
+              <Link href="/collection" className="hover:text-gray-900 transition-colors">Collection</Link>
               <Link href="/generate" className="hover:text-gray-900 transition-colors">Create</Link>
-              <Link href="/community" className="hover:text-gray-900 transition-colors">Community</Link>
             </nav>
           )}
 
