@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Menu } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LandingPage() {
@@ -24,36 +23,30 @@ export default function LandingPage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center group">
-              <span className="font-bold text-4xl tracking-wider transition-colors group-hover:opacity-90" style={{ color: '#36454F', fontFamily: 'var(--font-lilita)' }}>
+              <span className="font-bold text-2xl md:text-4xl tracking-wider transition-colors group-hover:opacity-90" style={{ color: '#36454F', fontFamily: 'var(--font-lilita)' }}>
                 SketchNFT
               </span>
             </Link>
           </div>
 
           {/* Right side - Navigation + Connect Button */}
-          <div className="flex items-center gap-8">
-            {/* Navigation */}
-            <nav className="hidden md:flex items-center gap-8 text-white/90 font-medium text-sm tracking-wider uppercase">
-              <Link href="/collection" className="hover:text-white transition-colors">Collection</Link>
-              <Link href="/generate" className="hover:text-white transition-colors">Create</Link>
+          <div className="flex items-center gap-4 md:gap-8">
+            {/* Navigation - Always visible */}
+            <nav className="flex items-center gap-4 md:gap-8 font-medium text-xs md:text-sm tracking-wider uppercase">
+              <Link href="/collection" className="text-gray-700 hover:text-gray-900 transition-colors">Collection</Link>
             </nav>
 
-            <div className="flex items-center gap-4">
-              <div className="hidden lg:block">
-                <Link href="/generate">
-                  <motion.button
-                    whileHover={{ scale: 1.02, opacity: 0.9 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="px-8 py-3.5 font-semibold text-base uppercase tracking-wider transition-all rounded-full shadow-lg backdrop-blur-xl border border-white/30"
-                    style={{ backgroundColor: '#36454F', color: '#FFFFFF' }}
-                  >
-                    Open App
-                  </motion.button>
-                </Link>
-              </div>
-              <button className="md:hidden text-white">
-                <Menu className="w-6 h-6" />
-              </button>
+            <div className="flex items-center">
+              <Link href="/generate">
+                <motion.button
+                  whileHover={{ scale: 1.02, opacity: 0.9 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-4 md:px-8 py-2 md:py-3.5 font-semibold text-sm md:text-base uppercase tracking-wider transition-all rounded-full shadow-lg"
+                  style={{ backgroundColor: '#36454F', color: '#FFFFFF' }}
+                >
+                  Open App
+                </motion.button>
+              </Link>
             </div>
           </div>
         </div>
