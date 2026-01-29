@@ -1,12 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useWallet } from '@/components/providers';
 import { Menu } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LandingPage() {
-  const { address } = useWallet();
 
   return (
     <div className="relative h-screen w-full overflow-hidden">

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useWallet } from '@/components/providers';
+import { useAccount } from 'wagmi';
+import { useEthersSigner } from '@/lib/hooks/useEthersSigner';
 import { Rocket, Layers, ArrowRight, Database, Sparkles, Palette, Users, Camera, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { Header } from '@/components/Header';
@@ -51,7 +52,8 @@ const STYLES = [
 ];
 
 export default function GeneratePage() {
-  const { address, signer } = useWallet();
+  const { address, isConnected } = useAccount();
+  const signer = useEthersSigner();
 
   const [prompt, setPrompt] = useState('');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);

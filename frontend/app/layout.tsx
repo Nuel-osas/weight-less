@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Lilita_One, Share_Tech } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/providers";
+import { ClientProviders } from "@/components/ClientProviders";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,9 +34,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${lilitaOne.variable} ${shareTech.variable} font-sans antialiased`}>
-        <Providers>
+        <ClientProviders>
           {children}
-        </Providers>
+        </ClientProviders>
       </body>
     </html>
   );

@@ -1,39 +1,90 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useWallet } from '@/components/providers';
+import { useState, useEffect } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export function CustomConnectButton() {
-  const { address, isConnecting, connect, disconnect } = useWallet();
+  const [mounted, setMounted] = useState(false);
 
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`.toLowerCase();
-  };
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  if (address) {
+  // Don't render until mounted (after RainbowKitProvider is ready)
+  if (!mounted) {
     return (
-      <motion.button
-        whileHover={{ scale: 1.02, opacity: 0.9 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={disconnect}
-        className="px-8 py-3.5 font-semibold text-base tracking-wider transition-all rounded-full shadow-lg backdrop-blur-xl border border-white/30"
+      <button
+        className="px-8 py-3.5 font-semibold text-base uppercase tracking-wider transition-all rounded-full shadow-lg backdrop-blur-xl border border-white/30 opacity-50"
         style={{ backgroundColor: '#36454F', color: '#FFFFFF' }}
+        disabled
       >
-        {formatAddress(address)}
-      </motion.button>
+        Connect Wallet
+      </button>
     );
   }
 
   return (
-    <motion.button
-      whileHover={{ scale: 1.02, opacity: 0.9 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={connect}
-      disabled={isConnecting}
-      className="px-8 py-3.5 font-semibold text-base uppercase tracking-wider transition-all rounded-full shadow-lg backdrop-blur-xl border border-white/30 disabled:opacity-50"
-      style={{ backgroundColor: '#36454F', color: '#FFFFFF' }}
-    >
-      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-    </motion.button>
+    <ConnectButton.Custom>
+      {({
+        account,
+        chain,
+        openAccountModal,
+        openChainModal,
+        openConnectModal,
+        mounted,
+      }) => {
+        const ready = mounted;
+        const connected = ready && account && chain;
+
+        return (
+          <div
+            {...(!ready && {
+              'aria-hidden': true,
+              style: {
+                opacity: 0,
+                pointerEvents: 'none',
+                userSelect: 'none',
+              },
+            })}
+          >
+            {(() => {
+              if (!connected) {
+                return (
+                  <button
+                    onClick={openConnectModal}
+                    className="px-8 py-3.5 font-semibold text-base uppercase tracking-wider transition-all rounded-full shadow-lg backdrop-blur-xl border border-white/30 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ backgroundColor: '#36454F', color: '#FFFFFF' }}
+                  >
+                    Connect Wallet
+                  </button>
+                );
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <button
+                    onClick={openChainModal}
+                    className="px-8 py-3.5 font-semibold text-base tracking-wider transition-all rounded-full shadow-lg border border-red-500/30 hover:opacity-90"
+                    style={{ backgroundColor: '#ef4444', color: '#FFFFFF' }}
+                  >
+                    Wrong Network
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  onClick={openAccountModal}
+                  className="px-8 py-3.5 font-semibold text-base tracking-wider transition-all rounded-full shadow-lg backdrop-blur-xl border border-white/30 flex items-center gap-2 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ backgroundColor: '#36454F', color: '#FFFFFF' }}
+                >
+                  {account.displayName}
+                </button>
+              );
+            })()}
+          </div>
+        );
+      }}
+    </ConnectButton.Custom>
   );
 }
