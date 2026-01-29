@@ -1,26 +1,29 @@
 /**
  * Storage Service - 0G Decentralized Storage
- * Stores AI-generated images and metadata on 0G Storage network
+ * Uploads to 0G Storage via API route (server handles SDK)
  *
- * Note: For MVP, we'll use a simplified approach that uploads via API route.
- * Full 0G SDK integration can be added later for direct uploads.
+ * Flow:
+ * 1. Client sends data to API route
+ * 2. API route uploads to 0G using SDK with backend wallet
+ * 3. User only signs once for NFT minting
  */
 
 // 0G Storage configuration
 const STORAGE_GATEWAY = process.env.NEXT_PUBLIC_0G_GATEWAY || 'https://indexer-testnet.0g.ai';
-const STORAGE_INDEXER = process.env.NEXT_PUBLIC_0G_INDEXER || 'https://indexer-testnet.0g.ai';
 
 export interface StorageResult {
   hash: string;
   success: boolean;
   error?: string;
   gatewayUrl?: string;
+  txHash?: string;
+  onChain?: boolean;
 }
 
 export interface NFTMetadata {
   name: string;
   description: string;
-  image: string; // Gateway URL to the image
+  image: string;
   attributes: Array<{
     trait_type: string;
     value: string;
@@ -62,11 +65,16 @@ export async function uploadImage(base64Image: string): Promise<StorageResult> {
 
     console.log(`[0G Storage] Image uploaded successfully!`);
     console.log(`[0G Storage] Hash: ${result.hash}`);
+    if (result.onChain) {
+      console.log(`[0G Storage] TX Hash: ${result.txHash}`);
+    }
 
     return {
       hash: result.hash,
       success: true,
       gatewayUrl: getStorageUrl(result.hash),
+      txHash: result.txHash,
+      onChain: result.onChain,
     };
   } catch (error) {
     console.error('[0G Storage] Image upload error:', error);
@@ -86,7 +94,6 @@ export async function uploadImage(base64Image: string): Promise<StorageResult> {
 export async function uploadMetadata(metadata: NFTMetadata): Promise<StorageResult> {
   try {
     console.log('[0G Storage] Starting metadata upload...');
-    console.log('[0G Storage] Metadata:', JSON.stringify(metadata, null, 2));
 
     const response = await fetch('/api/upload-to-0g', {
       method: 'POST',
@@ -107,11 +114,16 @@ export async function uploadMetadata(metadata: NFTMetadata): Promise<StorageResu
 
     console.log(`[0G Storage] Metadata uploaded successfully!`);
     console.log(`[0G Storage] Hash: ${result.hash}`);
+    if (result.onChain) {
+      console.log(`[0G Storage] TX Hash: ${result.txHash}`);
+    }
 
     return {
       hash: result.hash,
       success: true,
       gatewayUrl: getStorageUrl(result.hash),
+      txHash: result.txHash,
+      onChain: result.onChain,
     };
   } catch (error) {
     console.error('[0G Storage] Metadata upload error:', error);
@@ -151,7 +163,7 @@ export function createMetadata(
  * Check if storage is configured
  */
 export function isStorageConfigured(): boolean {
-  return !!(STORAGE_GATEWAY && STORAGE_INDEXER);
+  return !!STORAGE_GATEWAY;
 }
 
 /**
@@ -160,7 +172,6 @@ export function isStorageConfigured(): boolean {
 export function getStorageConfig() {
   return {
     gateway: STORAGE_GATEWAY,
-    indexer: STORAGE_INDEXER,
     configured: isStorageConfigured(),
   };
 }

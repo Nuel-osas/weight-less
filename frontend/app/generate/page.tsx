@@ -475,15 +475,15 @@ export default function GeneratePage() {
       ));
 
       // Step 1: Upload image to 0G Storage
-      console.log('[App] Uploading image...');
+      console.log('[App] Uploading image to 0G Storage...');
       const imageResult = await uploadImage(nft.url);
       if (!imageResult.success || !imageResult.hash) {
-        throw new Error('Failed to upload image');
+        throw new Error(imageResult.error || 'Failed to upload image');
       }
       console.log(`[App] ✓ Image uploaded: ${imageResult.hash}`);
 
       // Step 2: Upload metadata to 0G Storage
-      console.log('[App] Uploading metadata...');
+      console.log('[App] Uploading metadata to 0G Storage...');
       const metadata = createMetadata(
         nft.title || 'AI NFT',
         nft.description || 'AI-generated NFT on 0G Chain',
@@ -494,7 +494,7 @@ export default function GeneratePage() {
       );
       const metadataResult = await uploadMetadata(metadata);
       if (!metadataResult.success || !metadataResult.hash) {
-        throw new Error('Failed to upload metadata');
+        throw new Error(metadataResult.error || 'Failed to upload metadata');
       }
       console.log(`[App] ✓ Metadata uploaded: ${metadataResult.hash}`);
 

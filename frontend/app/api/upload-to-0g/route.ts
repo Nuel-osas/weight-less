@@ -2,8 +2,8 @@
  * API Route: Upload to 0G Storage
  * Server-side route that handles uploads to 0G decentralized storage
  *
- * Note: For MVP, this creates a hash based on content.
- * In production, integrate with 0G Storage SDK for actual decentralized storage.
+ * For MVP: Uses content-hash based storage simulation
+ * For Production: Integrate 0G SDK with backend wallet for on-chain storage
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
 
     console.log('[0G Storage API] Starting upload...');
     console.log('[0G Storage API] Data type:', type);
-    console.log('[0G Storage API] Gateway URL:', STORAGE_GATEWAY);
 
     let contentBuffer: Buffer;
     let contentType: string;
@@ -52,26 +51,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a content-based hash (simulating 0G Storage hash)
-    // In production, this would be the actual storage hash from 0G SDK
+    // Generate content-hash (deterministic based on content)
+    // This simulates 0G Storage - same content = same hash
     const hash = crypto.createHash('sha256').update(contentBuffer).digest('hex');
-    const storageHash = `0g_${hash.substring(0, 40)}`;
+    const storageHash = `0x${hash}`;
 
-    // TODO: In production, upload to 0G Storage using the SDK
-    // Example with 0G SDK (when available):
-    // const { ZgFile, Indexer } = require('@0glabs/0g-ts-sdk');
-    // const indexer = new Indexer(STORAGE_GATEWAY);
-    // const [tx, hash] = await indexer.upload(contentBuffer);
-
-    console.log(`[0G Storage API] ✅ Hash generated!`);
+    console.log(`[0G Storage API] ✅ Content hash generated!`);
     console.log(`[0G Storage API] Hash: ${storageHash}`);
-
-    const gatewayUrl = `${STORAGE_GATEWAY}/${storageHash}`;
 
     return NextResponse.json({
       success: true,
       hash: storageHash,
-      gatewayUrl: gatewayUrl,
+      gatewayUrl: `${STORAGE_GATEWAY}/${storageHash}`,
       size: contentBuffer.length,
       contentType: contentType,
     });
