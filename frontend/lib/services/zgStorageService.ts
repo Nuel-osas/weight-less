@@ -182,8 +182,9 @@ export async function uploadToZGStorage(
 }
 
 /**
- * Simplified upload that generates content hash and commits on-chain
- * Falls back to this if Flow contract fails
+ * Upload with signature-based commitment
+ * User signs a message to prove ownership/intent to store
+ * This is gas-free and works on all chains
  */
 export async function uploadWithCommitment(
   signer: ethers.Signer,
@@ -196,36 +197,39 @@ export async function uploadWithCommitment(
 
     const bytes = dataToBytes(data, type);
     const root = await calculateMerkleRoot(bytes);
+    const timestamp = Date.now();
 
     console.log(`[0G Storage] Data root: ${root}`);
     console.log(`[0G Storage] Size: ${(bytes.length / 1024).toFixed(2)} KB`);
 
     onProgress?.({ step: 'signing', message: 'Please sign to confirm storage...', progress: 50 });
 
-    // Create a simple commitment transaction
-    // This sends a small amount to self with the data hash in the tx data
+    // Create a message for signing (gas-free commitment)
     const address = await signer.getAddress();
+    const message = `0G Storage Commitment\n\nRoot: ${root}\nType: ${type}\nSize: ${bytes.length} bytes\nTimestamp: ${timestamp}\nAddress: ${address}`;
 
-    const tx = await signer.sendTransaction({
-      to: address,
-      value: 0,
-      data: ethers.hexlify(ethers.toUtf8Bytes(`0G-STORAGE:${root}:${type}:${bytes.length}`)),
-      gasLimit: 50000
-    });
+    // User signs the message (no gas required)
+    const signature = await signer.signMessage(message);
 
-    onProgress?.({ step: 'confirming', message: 'Confirming on chain...', progress: 75 });
+    console.log(`[0G Storage] Signature: ${signature.slice(0, 20)}...`);
 
-    const receipt = await tx.wait();
+    onProgress?.({ step: 'confirming', message: 'Verifying signature...', progress: 75 });
 
-    console.log(`[0G Storage] Commitment TX: ${tx.hash}`);
-    console.log(`[0G Storage] Block: ${receipt?.blockNumber}`);
+    // Verify the signature locally
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+      throw new Error('Signature verification failed');
+    }
+
+    console.log(`[0G Storage] Commitment verified!`);
+    console.log(`[0G Storage] Root: ${root}`);
 
     onProgress?.({ step: 'complete', message: 'Storage committed!', progress: 100 });
 
     return {
       success: true,
       root: root,
-      txHash: tx.hash
+      txHash: signature // Use signature as proof instead of tx hash
     };
 
   } catch (error: unknown) {
@@ -234,8 +238,8 @@ export async function uploadWithCommitment(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     if (errorMessage.includes('user rejected') || errorMessage.includes('ACTION_REJECTED')) {
-      onProgress?.({ step: 'error', message: 'Transaction rejected' });
-      return { success: false, root: '', error: 'Transaction rejected by user' };
+      onProgress?.({ step: 'error', message: 'Signature rejected' });
+      return { success: false, root: '', error: 'Signature rejected by user' };
     }
 
     onProgress?.({ step: 'error', message: errorMessage });
