@@ -70,6 +70,9 @@ export default function GeneratePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Individual minting state
+  const [mintingNftId, setMintingNftId] = useState<string | null>(null);
+
   // Start camera
   const startCamera = useCallback(async () => {
     setCameraError(null);
@@ -445,6 +448,92 @@ export default function GeneratePage() {
       console.error('[App] Minting process failed:', error);
       alert(`Minting failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setCollectionStatus(CollectionStatus.READY_TO_MINT);
+    }
+  };
+
+  // Mint a single NFT
+  const handleMintSingle = async (nftId: string) => {
+    if (!address || !signer) {
+      alert('Please connect your wallet first!');
+      return;
+    }
+
+    const nft = generatedImages.find(img => img.id === nftId);
+    if (!nft || nft.status !== 'completed') {
+      alert('NFT is not ready to mint!');
+      return;
+    }
+
+    try {
+      setMintingNftId(nftId);
+
+      console.log(`[App] Minting single NFT: ${nft.title || nftId}...`);
+
+      // Update status to uploading
+      setGeneratedImages(prev => prev.map(img =>
+        img.id === nftId ? { ...img, status: 'uploading' as const } : img
+      ));
+
+      // Step 1: Upload image to 0G Storage
+      console.log('[App] Uploading image...');
+      const imageResult = await uploadImage(nft.url);
+      if (!imageResult.success || !imageResult.hash) {
+        throw new Error('Failed to upload image');
+      }
+      console.log(`[App] ✓ Image uploaded: ${imageResult.hash}`);
+
+      // Step 2: Upload metadata to 0G Storage
+      console.log('[App] Uploading metadata...');
+      const metadata = createMetadata(
+        nft.title || 'AI NFT',
+        nft.description || 'AI-generated NFT on 0G Chain',
+        imageResult.hash,
+        nft.style,
+        nft.prompt,
+        resolution
+      );
+      const metadataResult = await uploadMetadata(metadata);
+      if (!metadataResult.success || !metadataResult.hash) {
+        throw new Error('Failed to upload metadata');
+      }
+      console.log(`[App] ✓ Metadata uploaded: ${metadataResult.hash}`);
+
+      // Update status to minting
+      setGeneratedImages(prev => prev.map(img =>
+        img.id === nftId ? {
+          ...img,
+          imageHash: imageResult.hash,
+          metadataHash: metadataResult.hash,
+          status: 'minting' as const
+        } : img
+      ));
+
+      // Step 3: Mint NFT on 0G Chain
+      console.log('[App] Minting on blockchain...');
+      const mintResult = await mintNFT(signer, metadataResult.hash, imageResult.hash, nft.style, nft.prompt);
+
+      console.log(`[App] ✓ NFT minted! Token ID: ${mintResult.tokenId}, TX: ${mintResult.txHash}`);
+
+      // Update status to minted
+      setGeneratedImages(prev => prev.map(img =>
+        img.id === nftId ? {
+          ...img,
+          status: 'minted' as const,
+          txHash: mintResult.txHash,
+          tokenId: mintResult.tokenId
+        } : img
+      ));
+
+    } catch (error) {
+      console.error('[App] Single mint failed:', error);
+      alert(`Minting failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      // Revert status to completed so user can retry
+      setGeneratedImages(prev => prev.map(img =>
+        img.id === nftId ? { ...img, status: 'completed' as const } : img
+      ));
+    } finally {
+      setMintingNftId(null);
     }
   };
 
@@ -942,6 +1031,8 @@ export default function GeneratePage() {
                             nft={nft}
                             onRegenerate={() => console.log('Regenerate', nft.id)}
                             onViewMetadata={() => console.log('View metadata', nft.id)}
+                            onMint={() => handleMintSingle(nft.id)}
+                            isMinting={mintingNftId === nft.id}
                           />
                         </motion.div>
                       ))}

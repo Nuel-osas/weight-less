@@ -20,9 +20,11 @@ interface NFTCardProps {
   };
   onRegenerate?: () => void;
   onViewMetadata?: () => void;
+  onMint?: () => void;
+  isMinting?: boolean;
 }
 
-export function NFTCard({ nft, onRegenerate, onViewMetadata }: NFTCardProps) {
+export function NFTCard({ nft, onRegenerate, onViewMetadata, onMint, isMinting }: NFTCardProps) {
   const getExplorerUrl = (txHash: string) => {
     return `https://chainscan-galileo.0g.ai/tx/${txHash}`;
   };
@@ -131,6 +133,39 @@ export function NFTCard({ nft, onRegenerate, onViewMetadata }: NFTCardProps) {
         ) : (
           <div className="space-y-2 animate-pulse">
             <div className="h-5 w-4/5 rounded bg-gray-200" />
+          </div>
+        )}
+
+        {/* Mint Button - Show for completed NFTs that aren't minted yet */}
+        {nft.status === 'completed' && onMint && (
+          <button
+            onClick={onMint}
+            disabled={isMinting}
+            className={`w-full py-2 px-4 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all ${
+              isMinting
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-[#36454F] text-white hover:bg-[#2a3540]'
+            }`}
+          >
+            {isMinting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Minting...
+              </>
+            ) : (
+              <>
+                <Database size={14} />
+                Mint NFT
+              </>
+            )}
+          </button>
+        )}
+
+        {/* Uploading/Minting Status */}
+        {(nft.status === 'uploading' || nft.status === 'minting') && (
+          <div className="w-full py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium text-sm flex items-center justify-center gap-2">
+            <Loader2 size={14} className="animate-spin" />
+            {nft.status === 'uploading' ? 'Uploading...' : 'Minting...'}
           </div>
         )}
 
